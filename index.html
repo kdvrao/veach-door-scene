@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title> </title>
+    <link rel="stylesheet" href="stylesheet/main.css">
+     <script type="application/javascript" src="js/stats.min.js"></script>
+     <!-- 
+     <button type="button" class="button" onclick="return playAnimation();">Click Me!</button>
+     -->
+     <button class="button" style="vertical-align:middle" onclick="return playAnimation();"><span>Play Animation </span></button>
+</head>
+
+<body>
+
+  <!-- 
+
+////////////////////////////////////////////////////
+///           ENVIRONMENT MAPPING SHADER        ////
+////////////////////////////////////////////////////
+
+   -->
+
+
+
+	<script id="vertexShader" type="x-shader/x-vertex">
+		
+varying vec3 vNormal;
+varying vec3 vReflect;
+
+
+void main() {
+
+  
+  vec3 vNormal = normalize( mat3( modelMatrix[0].xyz, modelMatrix[1].xyz, modelMatrix[2].xyz ) * normal );//normalize(normalMatrix * normal );
+  vec3 worldPosition = ( modelMatrix * vec4( position, 1.0 )).xyz;
+  vec3 cameraToVertex = normalize( worldPosition.xyz - cameraPosition );
+  //vReflect = normalize(refract( cameraToVertex, vNormal, 0.98 ));
+  vReflect = (2.0 * (dot(cameraToVertex, vNormal)) * vNormal - cameraToVertex);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  
+  
+}
+    </script>
+    <script id="fragmentShader" type="x-shader/x-fragment">
+       
+varying vec3 vNormal;
+//varying vec3 ReflectDir;
+uniform samplerCube uTexCube;
+//varying vec3 vNormal;
+varying vec3 vReflect;
+
+
+void main() {
+
+  gl_FragColor = textureCube( uTexCube, vec3(vReflect.x, -vReflect.y, -vReflect.z)); 
+  //gl_FragColor = vec4(vReflect, 1.0)
+
+
+  //gl_FragColor = vec4( vNormal.x ) + textureCube( uTexCube, vReflect );
+  //gl_FragColor = textureCube( uTexCube, vNormal );
+
+}
+    </script>
+
+
+
+
+<!-- 
+
+////////////////////////////////////////////////////
+///           COLOR BASED ON NORMALS            ////
+////////////////////////////////////////////////////
+
+   -->
+
+
+    <script id="vertexShadercolor" type="x-shader/x-vertex">
+		
+varying vec3 vNormal;
+
+void main() {
+
+  
+  vNormal = normal;
+ 
+
+  gl_Position = projectionMatrix * viewMatrix * vec4(position, 1.0);
+  
+}
+    </script>
+    <script id="fragmentShadercolor" type="x-shader/x-fragment">
+        
+varying vec3 vNormal;
+
+
+void main() {
+
+  gl_FragColor = vec4(vNormal, 1.0);
+  
+}
+    </script>
+
+
+
+<!-- 
+
+////////////////////////////////////////////////////
+///           DIFFUSE EFFECT SHADER             ////
+////////////////////////////////////////////////////
+
+   -->
+
+
+
+ <script id="vertexShaderDiffuse" type="x-shader/x-vertex">
+		
+// create a shared variable for the
+// VS and FS containing the normal
+varying vec3 vNormal;
+varying vec2 vUv;
+
+void main() {
+
+  // set the vNormal value with
+  // the attribute value passed
+  // in by Three.js
+  vNormal = normal;
+
+  vUv = uv;
+
+  gl_Position = projectionMatrix *
+                modelViewMatrix *
+                vec4(position, 1.0);
+}
+    </script>
+    <script id="fragmentShaderDiffuse" type="x-shader/x-fragment">
+        
+
+			// same name and type as VS
+varying vec3 vNormal;
+varying vec2 vUv;
+uniform sampler2D texture1;
+
+void main() {
+
+  // calc the dot product and clamp
+  // 0 -> 1 rather than -1 -> 1
+  vec3 light = vec3(0.5, 0.2, 1.0);
+
+  // ensure it's normalized
+  light = normalize(light);
+
+  // calculate the dot product of
+  // the light to the vertex normal
+  float dProd = max(0.0,
+                    dot(vNormal, light));
+
+  // feed into our frag colour
+  gl_FragColor = vec4(dProd, dProd, dProd, 1.0);// * texture2D(texture1, vUv);  // A
+  //gl_FragColor = texture2D(texture1, vUv);
+
+}
+
+    </script>
+
+
+
+
+    <!-- 
+
+////////////////////////////////////////////////////
+///           GLOW EFFECT  SHADER              ////
+////////////////////////////////////////////////////
+
+   -->
+
+    <script id="vertexShaderglow" type="x-shader/x-vertex">
+    
+
+//varying vec3 vNormal;
+varying vec3 vReflect;
+
+
+void main() {
+
+  
+  vec3 vNormal = normalize( normalMatrix * normal );
+  vec3 worldPosition = ( modelMatrix * vec4( position, 1.0 )).xyz;
+  vec3 cameraToVertex = normalize( worldPosition - cameraPosition );
+  //vReflect = normalize(reflect( cameraToVertex, vNormal ));
+ vReflect = normalize(2.0 * (dot(cameraToVertex, vNormal)) * vNormal - cameraToVertex);
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  
+  
+}
+
+    </script>
+    <script id="fragmentShaderglow" type="x-shader/x-fragment">
+        
+//varying vec3 vNormal;
+//varying vec3 ReflectDir;
+//uniform samplerCube uTexCube;
+//varying vec3 vNormal;
+varying vec3 vReflect;
+
+
+void main() {
+
+  gl_FragColor = vec4(vReflect, 1.0);
+  //gl_FragColor = vec4(vReflect, 1.0)
+
+
+  //gl_FragColor = vec4( vNormal.x ) + textureCube( uTexCube, vReflect );
+  //gl_FragColor = textureCube( uTexCube, vNormal );
+
+}
+    </script>
+
+
+
+    <!-- 
+
+////////////////////////////////////////////////////
+/// ENVIRONMENT MAPPING SHADER PLAYGROUND       ////
+////////////////////////////////////////////////////
+
+   -->
+
+     <script id="vertexShaderCube" type="x-shader/x-vertex">
+    
+
+varying vec3 vWorldPosition;
+
+#include <common>
+
+void main() {
+
+  vWorldPosition = transformDirection( position, modelMatrix );
+
+  #include <begin_vertex>
+  #include <project_vertex>
+
+  gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4( position, 1.0 );
+
+}
+
+    </script>
+    <script id="fragmentShaderCube" type="x-shader/x-fragment">
+        
+uniform samplerCube uTexCube;
+      varying vec3 vWorldPosition;
+
+void main() {
+
+  gl_FragColor = textureCube( uTexCube, vec3( vWorldPosition.x, vWorldPosition.yz ) );
+  
+
+}
+    </script>
+
+
+
+
+<script id="vertexShaderRefract" type="x-shader/x-vertex">
+    
+uniform float index;
+varying vec3 v_reflection;
+varying vec3 v_refraction;
+varying float v_fresnel;
+
+// Indices of refraction
+const float Air = 1.0;
+const float Glass = 1.51714;
+
+
+
+// Air to glass ratio of the indices of refraction (Eta)
+const float Eta = Air / Glass;
+ 
+// see http://en.wikipedia.org/wiki/Refractive_index Reflectivity
+const float R0 = ((Air - Glass) * (Air - Glass)) / ((Air + Glass) * (Air + Glass));
+
+
+void main() {
+
+
+  
+  
+  vec3 vNormal = normalize( mat3( modelMatrix[0].xyz, modelMatrix[1].xyz, modelMatrix[2].xyz ) * normal );//normalize(normalMatrix * normal );
+
+  vec3 worldPosition = ( modelMatrix * vec4( position, 1.0 )).xyz;
+  vec3 cameraToVertex = normalize( worldPosition.xyz - cameraPosition );
+
+  v_refraction = refract(cameraToVertex, vNormal, index);
+  v_reflection = reflect(cameraToVertex, vNormal);
+
+  v_fresnel = R0 + (1.0 - R0) * pow((1.0 - dot(-cameraToVertex, vNormal)), 5.0);
+
+
+  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+  
+  
+}
+    </script>
+    <script id="fragmentShaderRefract" type="x-shader/x-fragment">
+       
+uniform samplerCube uTexCube;
+varying vec3 v_reflection;
+varying vec3 v_refraction;
+varying float v_fresnel;
+
+
+void main() {
+
+
+
+  vec4 refractionColor = textureCube(uTexCube, normalize(vec3(-v_refraction.x, v_refraction.y ,v_refraction.z)));
+  vec4 reflectionColor = textureCube(uTexCube, normalize(vec3(-v_reflection.x, v_reflection.y, v_reflection.z)));
+    
+  gl_FragColor = mix(refractionColor, reflectionColor, v_fresnel), 1.0;
+
+}
+    </script>
+
+
+
+<script id="vertexShaderRefractChrom" type="x-shader/x-vertex">
+    
+
+varying vec3 vRefract;
+uniform float index;
+
+void main() {
+    vec3 worldPosition = ( modelMatrix * vec4( position, 1.0 )).xyz;
+    vec3 cameraToVertex = normalize( worldPosition - cameraPosition );
+    vec3 worldNormal = normalize(
+        mat3( modelMatrix[ 0 ].xyz, modelMatrix[ 1 ].xyz, modelMatrix[ 2 ].xyz ) * normal
+    );
+    vRefract = refract( cameraToVertex, worldNormal, index );
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+}
+    </script>
+
+
+    <script id="fragmentShaderRefractChrom" type="x-shader/x-fragment">
+       
+precision highp float;
+precision highp int;
+
+varying vec3 vRefract;
+
+
+uniform samplerCube uTexCube;
+
+void main() {
+    float x = 1.0 * vRefract.x;
+    vec4 cubeColor = vec4(
+      textureCube( uTexCube, vec3( x, vRefract.yz ) ).r,
+      textureCube( uTexCube, vec3( x, vRefract.yz * 0.98 * 1.1 ) ).g,
+      textureCube( uTexCube, vec3( x, vRefract.yz * 0.99 * 1.1 ) ).b,
+      1.0
+  );
+      
+    cubeColor.w = 1.0;
+    gl_FragColor = cubeColor;
+}
+    </script>
+
+
+
+
+    <script src="js/three.js"></script>
+    <script src="js/OBJLoader.js"></script>
+    <script src="js/OrbitControls.js"></script>
+    <script src="js/dat.gui.js"></script>
+    <script src='js/tween.js'></script>
+    
+    <script src="js/FresnelShader.js"></script>
+    <script src="js/Detector.js"></script>
+    <script src="js/stats.min.js"></script>
+    <script src="js/RaytracingRenderer.js"></script>
+    <script src="js/Reflector.js"></script>
+    <script src="js/settingScene.js"></script>
+
+
+</body>
+
+</html>
